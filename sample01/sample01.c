@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <poll.h>
 #include <signal.h>
+#include <errno.h>
 
 #ifndef __NR_pidfd_open
 #define __NR_pidfd_open 434   /* System call # on most architectures */
@@ -26,7 +27,6 @@ pidfd_open(pid_t pid, unsigned int flags)
 
 #define TIMEOUT (120 * 1000)    /* TimeOut = 120sec */
 
-
 int main (int argc, char ** argv)
 {
   pid_t pid = fork ();
@@ -45,7 +45,6 @@ int main (int argc, char ** argv)
     }
 
   printf ("my process id:%d\n", getpid());
-
   if (pid == 0)
     {
       /* Child Process */
@@ -65,6 +64,7 @@ int main (int argc, char ** argv)
           return -1;
         }
 
+    retry:
       pollfd.fd = pfd;
       pollfd.events = POLLIN;
 
@@ -72,6 +72,9 @@ int main (int argc, char ** argv)
       if (ready < 0)
         {
           perror("poll");
+          if (errno == EINTR)
+            goto retry;
+
           return -1;
         }
       else if (ready == 0)
